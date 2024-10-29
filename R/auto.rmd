@@ -1,0 +1,456 @@
+---
+title: "Predicting Car Prices Using Machine Learning"
+subtitle: ""
+author: "Youssef DIR & Nazifou AFOLABI"
+output:
+  revealjs::revealjs_presentation:
+    slide-number: yes
+    mermaid-format: png
+    chalkboard:
+      toggleChalkboardButton: yes
+    transition: slide
+    background-transition: fade
+    theme: night
+    incremental: yes
+    footer: "--- MACHINGLEARNING ---"
+    controls: yes
+    preview-links: auto
+    reference-location: document
+    pandoc_args: ["--slide-level=2"]
+
+---
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+options(warn = -1)
+
+# Charger les packages
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(readr)
+
+# Réactiver l'affichage des avertissements (optionnel)
+options(warn = 0)
+```
+
+
+# Predicting Car Prices Using Machine Learning{.slide background-image="3.jpg" background-size="cover" background-opacity="0.3"}
+
+
+<div  font-weight: bold;">
+This project is dedicated to predicting the prices of luxury and standard vehicles on Autoscout24 using Machine Learning models. The goal is to create an efficient and reliable predictive model that can estimate car prices with high accuracy, providing valuable insight for buyers, sellers, and enthusiasts in the automotive industry.
+</div>
+
+## Scraping 
+
+
+
+
+<div  font-weight: bold;">
+
+-We extract detailed information about various vehicle models from AutoScout24 with the file VehicleScraper executed in main.py.<br><br>
+
+<span style="color: red; font-weight: bold;">Brands Covered:</span> 
+- Audi, Mercedes-Benz (including AMG GT), Ferrari, Fiat, Porsche, Toyota, Ford, Volkswagen, Bentley, Renault, Land Rover.<br><br>
+
+<span style="color: red; font-weight: bold;">Data Points Extracted:</span><br><br> 
+
+<span style="color: red; font-weight: bold;">Price:</span> The cost of each vehicle.<br><br>
+<span style="color: red; font-weight: bold;">Power:</span> Engine power details, usually in kW or CH.<br><br>
+<span style="color: red; font-weight: bold;">Evaluations:</span> Number of evaluations or reviews for the vehicle.<br><br>
+<span style="color: red; font-weight: bold;">Name:</span> The name of the vehicle.<br><br>
+</div>
+## Scraping
+<div font-weight: bold;">
+
+<span style="color: red; font-weight: bold;">Brands:</span> The manufacturer or brand of the vehicle.<br><br>
+<span style="color: red; font-weight: bold;">Version:</span> Specific version or model of the vehicle.<br><br>
+
+<span style="color: red; font-weight: bold;">Mileage:</span> The total distance the vehicle has traveled.<br><br>
+<span style="color: red; font-weight: bold;">Fuel Type:</span> Type of fuel used (e.g., petrol, diesel, electric).<br><br>
+<span style="color: red; font-weight: bold;">Transmission Type:</span> The transmission system (e.g., manual, automatic).<br><br>
+
+</div>
+
+<!-- Slide 2 -->
+## PARTIE I: Data
+
+### Data before cleaning  
+```{r echo=FALSE}
+
+library(reticulate)
+
+
+use_python("C:\\Users\\Youssef\\AppData\\Local\\Programs\\Python\\Python312\\python.exe")
+
+```
+
+```{python echo=FALSE}
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+```{python echo=FALSE}
+# Chargement des données
+csv_file_path = 'C:\\Users\\Youssef\\Desktop\\M2\\MACHING\\Projet\\vehicules.csv'
+df = pd.read_csv(csv_file_path)
+```
+
+```{python echo=FALSE}
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', 100) 
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.max_colwidth', 50)
+pd.set_option('display.precision', 2)
+print(df.head(900))
+
+```
+## Editing Data  
+
+```{python}
+# Manipulation des données
+df = df.drop('Date', axis=1)
+df['Évaluations'] = df['Évaluations'].replace('Évaluations non disponibles', 0).astype(float)
+df['Puissance_CH'] = df['Puissance'].str.extract('(\d+\.?\d*) CH').astype(float)
+df['Prix'] = df['Prix'].str.replace('€', '').str.replace(' ', '').str.replace(',', '.').astype(float)
+df['Kilométrage'] = df['Kilométrage'].str.replace('km', '').str.replace(' ', '').str.replace(',', '.').str.replace('- ', '0').astype(float)
+df['Carburant'] = df['Carburant'].replace(['- Carburant','CNG'], 'Autre')
+df['Transmission'] = df['Transmission'].replace(['- Boîte', 'Boite non disponible'], 'Autre')
+
+# Autres manipulations et création de dummies
+new_df = df.drop(['Nom de la Voiture', 'Version', 'Vendeur'], axis=1)
+df_1 = pd.get_dummies(new_df, columns=['Modèle', 'Carburant', 'Transmission'])
+df_new1 = df_1.drop(['Carburant_Autres', 'Puissance'], axis=1)
+df_encoded = df_new1.dropna(subset=['Puissance_CH'])
+df_encoded = df_encoded.drop(columns=['Carburant_Autre', 'Transmission_Autre'])
+```
+<!-- Répétez le style pour une autre image de fond -->
+
+## Data after  Cleaning
+
+```{python echo=FALSE}
+
+
+# Configure les options d'affichage
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', 100) 
+pd.set_option('display.expand_frame_repr', False)
+pd.set_option('display.max_colwidth', 50)
+pd.set_option('display.precision', 2)
+
+
+# Affichage du DataFrame final
+print(df_encoded.head(10))
+
+```
+
+<div font-weight: bold;">
+
+**Types of Variables:**<br><br>
+
+- <span style="font-weight: bold;">Price, Power, Evaluation, Mileage:</span> <span style="color: blue;">Float</span><br>
+  &nbsp; - Numeric values representing cost, engine power, user ratings, and distance traveled.<br><br>
+  
+- <span style="font-weight: bold;">Brands, Fuel Type, Transmission Type:</span> <span style="color: blue;">Categorical</span><br>
+  &nbsp; - Discrete values categorizing brand names, fuel options, and transmission modes.
+
+</div>
+
+
+
+
+
+<!-- Slide 3 -->
+## PARTIE II: Statistiques
+###
+```{python echo=FALSE}
+cols_of_interest = ['Prix', 'Kilométrage', 'Évaluations', 'Puissance_CH', 'Carburant_Electrique/Essence', 
+                    'Carburant_Essence', 'Transmission_Boîte automatique', 'Transmission_Boîte manuelle',
+                    'Carburant_Electrique/Diesel', 'Carburant_Diesel']
+subset_df = df_encoded[cols_of_interest]
+
+# Calculez la matrice de corrélation pour ce sous-dataframe
+correlation_matrix = subset_df.corr()
+
+# Affichez la matrice de corrélation sous forme de heatmap
+plt.figure(figsize=(12, 8))  # Modifiez la taille selon vos besoins
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+
+# Ajout d'un titre et ajustement des labels
+plt.title('Matrice de Corrélation des Variables du Véhicule', fontsize=18)
+_, _ =plt.xticks(rotation=45, horizontalalignment='right', fontsize=10)
+_, _ =plt.yticks(fontsize=10)
+
+plt.tight_layout()  # Ajuste automatiquement les sous-plots pour qu'ils s'adaptent au cadre de la figure
+plt.show();
+
+```
+
+
+
+## Distribution de la Puissance et les Evaluations 
+
+```{python echo=FALSE}
+sns.set(style='whitegrid')
+sns.set_palette('pastel')
+
+# Création de la figure
+plt.figure(figsize=(20, 12))
+
+# Histogramme pour 'Puissance_CH'
+plt.subplot(1, 2, 1)
+sns.histplot(df_encoded['Puissance_CH'], kde=True, color='blue')
+plt.title('Distribution de la puissance en chevaux', fontsize=14)
+plt.xlabel('Puissance en CH', fontsize=12)
+plt.ylabel('Fréquence', fontsize=12)
+
+# Histogramme pour 'Évaluations'
+plt.subplot(1, 2, 2)
+sns.histplot(df['Évaluations'].dropna(), kde=True, color='green')
+plt.title('Distribution des Évaluations', fontsize=14)
+plt.xlabel('Évaluations', fontsize=12)
+plt.ylabel('Fréquence', fontsize=12)
+
+# Ajustement de la mise en page et affichage
+plt.tight_layout()
+plt.show()
+```
+
+## Distribution of  Carburant and Transmission Type
+
+
+```{python, echo=FALSE}
+
+carburant_dummy_totals = df_encoded[[col for col in df_encoded.columns if 'Carburant_' in col]].sum().sort_values(ascending=False)
+transmission_dummy_totals = df_encoded[[col for col in df_encoded.columns if 'Transmission_' in col]].sum().sort_values(ascending=False)
+plt.figure(figsize=(18, 9))
+
+# Graphique pour les types de carburant
+plt.subplot(1, 2, 1)
+sns.barplot(x=carburant_dummy_totals.index, y=carburant_dummy_totals.values, palette='Set2')
+plt.title('Count of Carburant Types', fontsize=14, fontweight='bold')
+plt.xticks(rotation=45, fontsize=12)
+plt.yticks(fontsize=12)
+plt.xlabel('Carburant Types', fontsize=12)
+plt.ylabel('Count', fontsize=12)
+
+# Graphique pour les types de transmission
+plt.subplot(1, 2, 2)
+sns.barplot(x=transmission_dummy_totals.index, y=transmission_dummy_totals.values, palette='Set2')
+plt.title('Count of Transmission Types', fontsize=14, fontweight='bold')
+plt.xticks(rotation=45, fontsize=12)
+plt.yticks(fontsize=12)
+plt.xlabel('Transmission Types', fontsize=12)
+plt.ylabel('Count', fontsize=12)
+
+plt.tight_layout()
+plt.show()
+
+
+
+```
+
+## Distribution of Price and Mileage 
+
+
+```{python echo=FALSE}
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Créer une palette de couleurs personnalisée pour les graphiques
+custom_palette = sns.color_palette("Set2")
+
+plt.figure(figsize=(20, 13))
+
+# Diagramme de densité pour le prix
+plt.subplot(1, 2, 1)
+sns.kdeplot(df['Prix'], shade=True, color=custom_palette[0])
+plt.xlabel('Prix (en euros)', fontsize=12, fontweight='bold', color='black')
+plt.ylabel('Densité', fontsize=12, fontweight='bold', color='black')
+plt.title('Distribution des prix des véhicules', fontsize=14, fontweight='bold', color='black')
+plt.xlim(0, 600000)
+# Diagramme de densité pour le kilométrage
+plt.subplot(1, 2, 2)
+sns.kdeplot(df['Kilométrage'], shade=True, color=custom_palette[1])
+plt.title('Distribution du kilométrage des véhicules', fontsize=14, fontweight='bold', color='black')
+plt.xlabel('Kilométrage', fontsize=12, fontweight='bold', color='black')
+plt.ylabel('Densité', fontsize=12, fontweight='bold', color='black')
+
+plt.tight_layout()
+plt.show()
+```
+
+##  BoxPlot
+```{python echo=FALSE}
+plt.figure(figsize=(14, 8))
+sns.set_style("whitegrid")
+
+# Création du boxplot avec une palette de couleurs améliorée
+sns.boxplot(x='Modèle', y='Prix', data=df, palette="Set2")
+
+# Amélioration de la lisibilité
+plt.title('Distribution des Prix par Marque de Voiture', fontsize=16)
+plt.xlabel('Marque', fontsize=14)
+plt.ylabel('Prix en Euros', fontsize=14)
+plt.xticks(rotation=45, fontsize=12)
+plt.yticks(fontsize=12)
+
+
+# Afficher les valeurs médianes
+medians = df.groupby(['Modèle'])['Prix'].median().values
+median_labels = [str(round(median, 2)) for median in medians]
+pos = range(len(medians))
+for tick, label in zip(pos, median_labels):
+    plt.text(pos[tick], medians[tick] + 0.03, median_labels[tick], 
+             horizontalalignment='center', size='small', color='black', weight='semibold')
+
+plt.show()
+```
+
+## Price Carburant
+```{python echo=FALSE}
+diesel = df_encoded[df_encoded['Carburant_Diesel']]['Prix']
+electrique = df_encoded[df_encoded['Carburant_Electrique']]['Prix']
+hybride_diesel = df_encoded[df_encoded['Carburant_Electrique/Diesel']]['Prix']
+hybride_essence = df_encoded[df_encoded['Carburant_Electrique/Essence']]['Prix']
+essence = df_encoded[df_encoded['Carburant_Essence']]['Prix']
+
+# Création du graphique de densité
+plt.figure(figsize=(12, 8))
+sns.kdeplot(diesel, shade=True, label='Diesel')
+sns.kdeplot(electrique, shade=True, label='Électrique')
+sns.kdeplot(hybride_diesel, shade=True, label='Hybride Diesel')
+sns.kdeplot(hybride_essence, shade=True, label='Hybride Essence')
+sns.kdeplot(essence, shade=True, label='Essence')
+
+plt.title('Comparaison de la Distribution des Prix par Type de Carburant')
+plt.xlabel('Prix en Euros')
+plt.ylabel('Densité')
+plt.legend()
+plt.show()
+```
+
+
+
+
+## Comparative Analysis of Vehicle Features by Model
+
+
+```{python echo=FALSE}
+
+# Créez un sous-ensemble de données avec les colonnes pertinentes
+data_subset = df[['Prix', 'Puissance_CH', 'Kilométrage', 'Modèle']].dropna()
+
+# Créez un pairplot avec Seaborn
+pairplot = sns.pairplot(data_subset, hue='Modèle', palette='bright', plot_kws={'alpha': 0.5, 's': 30})
+
+# Améliorez la lisibilité lorsque de nombreux modèles différents sont présents
+pairplot.fig.set_size_inches(15, 10)
+
+# Déplacez la légende en dehors du graphique
+plt.legend(title='Modèle', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+# Affichez le pairplot
+plt.show()
+```
+
+
+## Comparative Analysis by Specific Model
+
+```{python echo=FALSE}
+# Liste des modèles que vous souhaitez inclure
+selected_models = ['mercedes', 'ferrari', 'land-rover', 'renault', 'fiat','bentley']
+
+# Filtrer le DataFrame pour ne conserver que les modèles sélectionnés
+df_selected_models = df[df['Modèle'].isin(selected_models)]
+
+# Créer le pairplot pour les modèles sélectionnés
+pairplot = sns.pairplot(df_selected_models[['Prix', 'Puissance_CH', 'Kilométrage', 'Modèle']].dropna(), hue='Modèle', palette='bright', plot_kws={'alpha': 0.5, 's': 30})
+
+# Améliorer la lisibilité lorsque de nombreux modèles différents sont présents
+pairplot.fig.set_size_inches(15, 10)
+
+# Déplacer la légende en dehors du graphique
+plt.legend(title='Modèle', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+# Afficher le pairplot
+plt.show()
+
+
+```
+
+<!-- Slide 4 -->
+## Maching Learning{.slide} 
+
+<br> <!-- Ceci est un saut de ligne -->
+
+### Tableau des Modèles
+
+```{r echo=FALSE}
+# Lire les données depuis le fichier CSV
+resultats_modeles <- read.csv('resultats_modeles.csv')
+
+# Afficher le tableau des résultats
+knitr::kable(resultats_modeles)
+
+```
+
+<!-- Espace vertical -->
+<div style="margin-top: 20px;"></div>
+<!-- Votre texte en gras -->
+<div style="font-weight: bold;">
+KNN The best Model
+</div>
+
+
+## Graphique de la RMSE des Modèles{.slide}
+
+```{r, echo=FALSE}
+library(ggplot2)
+
+ggplot(resultats_modeles, aes(x = Modèle, y = RMSE, fill = Modèle)) +
+    geom_bar(stat = "identity") +
+    theme_minimal() +
+    labs(title = "Comparaison du RMSE des Modèles", y = "RMSE", x = "")
+
+```
+
+## Graphique R2
+
+```{r echo=FALSE}
+
+library(RColorBrewer)
+
+data <- data.frame(
+  Modèle = c("Linéaire", "Forêt Aléatoire", "Boosting", "KNN", "MLP", "Lasso", "SVM"),
+  RMSE = c(49113.33, 301.18, 67.38589, 13.91941, 15910.26, 49034.38591, 73757.81567),
+  R2 = c(0.6846197, 0.9999881, 0.9999994, 1.0000000, 0.9669029, 0.6856328, 0.2887015)
+)
+
+# Create the bar chart
+ggplot(resultats_modeles, aes(x=Modèle, y=R2, fill=Modèle)) +
+  geom_bar(stat='identity', width=0.8) + # Increase bar width for better visibility
+  geom_text(aes(label=round(R2, 4)), position=position_dodge(width=0.8), vjust=-0.25, size=3) +
+  scale_fill_brewer(palette="Spectral") + # Use a high-contrast color palette
+  labs(title='Comparaison des Modèles - R²',
+       subtitle='Coefficient de détermination pour chaque modèle',
+       x='Modèle',
+       y='R²') +
+  theme_minimal(base_size = 14) + # Increase base font size for better legibility
+  theme(legend.position="bottom",
+        plot.title = element_text(size=20, hjust = 0.5),
+        plot.subtitle = element_text(size=16, hjust = 0.5),
+        axis.title.x = element_text(size
+=14),
+axis.title.y = element_text(size=14),
+axis.text.x = element_text(angle=45, vjust=1, hjust=1, size=12),
+legend.title = element_blank(),
+plot.margin = margin(10, 10, 10, 10)) +
+guides(fill=guide_legend(title="Modèle")) +
+scale_y_continuous(expand = expansion(mult = c(0.1, 0.1))) # Add some space at the top and bottom of the bars
+```
+
+
+
+
